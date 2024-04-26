@@ -122,7 +122,6 @@ async def handle(client: Client, message: Message):
 
 @app.on_message(((filters.photo | filters.document | filters.video) & ~filters.media_group) & filters.chat(allowSendGrp), group=1)
 async def quicksend(client, message):
-    # if (message.chat.id in allowSendGrp):
     try:
         file_type = message.media.value
         if (file_type == "photo"):
@@ -207,18 +206,32 @@ async def get_file_information(msg):
             return None
 
     return file
+
 # 檢查是否有存在相同檔案id
 
 
 async def check_duplicate_file(msg):
+    removeID = None  # 暫存重複的 mid
+
     file = await get_file_information(msg)
     if file is None:  # doesn't have media
-        return False, file
-    if file['fid'] in file_list[msg.chat.id]:  # have duplicate
-        return True, file
-    file_list[msg.chat.id].append(file['fid'])  # no duplicate
-
-    return False, file
+        return False, file, -1
+    if file['fid'] in [x[1] for x in file_list[msg.chat.id]]:  # 如果 fid 在 file_list 中已經存在（即有重複）
+        # 檢查 file 的 fid 是否存在於 file_list 中，同時將重複的 mid 放入 removeID
+        for f_id, f_unique_id in file_list[msg.chat.id]:
+            if f_unique_id == file['fid']:
+                removeID = f_id
+                break
+        # 將與重複的 fid 相對應的 mid 存入 removeID 中後，將重複的 fid 從 file_list 中刪除
+        file_list[msg.chat.id] = [(f_id, f_unique_id) for f_id,
+                                  f_unique_id in file_list[msg.chat.id] if f_unique_id != file['fid']]
+        # 將新的 (mid, fid) 加入 file_list
+        file_list[msg.chat.id].append((file['mid'], file['fid']))
+        return True, file, removeID
+    # 如果 fid 在 file_list 中不存在（即沒有重複）
+    file_list[msg.chat.id].append((file['mid'], file['fid']))
+    # 回傳 False 代表沒有處理重複的 fid，並回傳 file
+    return False, file, -1
 
 
 @app.on_message((filters.media) & filters.chat(checkSameGrp), group=2)
@@ -231,7 +244,7 @@ async def delMsg(client: Client, message: Message):
 
     text = color.PURPLE + "[ Delete ] "  # 將整個文字加上紫色顯示
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # 取得當前時間
-    is_duplicate, file = await check_duplicate_file(msg)
+    is_duplicate, file, removeID = await check_duplicate_file(msg)
     if is_duplicate:
         text += "Time: {} ".format(current_time)
         text += ",Group: {} ".format(file['group'])
@@ -244,8 +257,7 @@ async def delMsg(client: Client, message: Message):
             text += " ,Resolution: {}x{}".format(file['w'], file['h'])
         print(text + color.END)
 
-        await app.delete_messages(msg.chat.id, msg.id)
-        # await delOldMsg(msg)
+        await app.delete_messages(msg.chat.id, removeID)
 
 
 async def init():
@@ -257,15 +269,13 @@ async def init():
                 file_list[chat.id] = []  # 初始化每個群組檔案列表
                 total = 0  # 統計處理訊息數量
                 delete = 0  # 統計刪除訊息數量
-            # for i in checkSameGrp:
                 async for msg in app.search_messages(i):
                     # 讀取群組訊息(由舊到新)
-                    is_duplicate, _ = await check_duplicate_file(msg)
+                    is_duplicate, _, removeID = await check_duplicate_file(msg)
                     if is_duplicate:
-                        print('群組:{}, 重複檔案進行刪除[{}]'.format(msg.chat.title, msg.id))
+                        print('群組:{}, 重複檔案進行刪除[{}]'.format(msg.chat.title, removeID))
                         # 刪除訊息
-                        # await delOldMsg(msg)
-                        await app.delete_messages(msg.chat.id, msg.id)
+                        await app.delete_messages(msg.chat.id, removeID)
                         delete += 1
                     total += 1
                     bar.set_description('群組:{} 初始化檢查重複檔案, 檢查數量:{}, 刪除:{}'.format(
@@ -284,6 +294,8 @@ async def init():
 
 print("Initialize checking for duplicate files...")
 app.run(init())
+
+
 # app.run()
 
 # print("Enter Yes to start the APP:")
