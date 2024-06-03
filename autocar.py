@@ -66,14 +66,7 @@ TestServer = [-4004465584, -4069257192]  # 測試伺服器 AAA,BBB
 
 allowSendGrp = ["自行加入"]  # 允許轉發群組
 checkSameGrp = ["自行加入"]  # 偵測重複檔案群組
-
-
-@app.on_message(filters.command("i") & filters.me)
-async def info(client: Client, message: Message):
-    if message.reply_to_message_id:
-        await app.edit_message_text(message.chat.id, message.id, str(message.reply_to_message)[:4096])
-    else:
-        await app.edit_message_text(message.chat.id, message.id, str(message)[:4096])
+captions_blacklist = ["自行加入"]
 
 
 @app.on_message(filters.command("save") & filters.me)
@@ -87,7 +80,39 @@ async def saveID(client: Client, message: Message):
         f.write(list_str)
 
 
+@app.on_message(filters.command("fi") & filters.me)
+async def fullInfo(client: Client, message: Message):
+    if message.reply_to_message_id:
+        await app.edit_message_text(message.chat.id, message.id, str(message.reply_to_message)[:4096])
+    else:
+        await app.edit_message_text(message.chat.id, message.id, str(message)[:4096])
+
+
+@app.on_message(filters.command("i") & filters.me)
+async def simpleInfo(client: Client, message: Message):
+    if message.reply_to_message_id:
+        msg = await client.get_messages(message.chat.id, message.reply_to_message_id)
+    else:
+        msg = message
+
+    info = {
+        "Message ID": msg.id,
+        "Chat Title": msg.chat.title if msg.chat else None,
+        "Chat ID": msg.chat.id if msg.chat else None,
+        "First Name": msg.from_user.first_name if msg.from_user else None,
+        "Username": msg.from_user.username if msg.from_user else None,
+        "User ID": msg.from_user.id if msg.from_user else None,
+        "Photo Unique ID": msg.photo.file_unique_id if msg.photo else None,
+        "Document Unique ID": msg.document.file_unique_id if msg.document else None,
+        "Video Unique ID": msg.video.file_unique_id if msg.video else None
+    }
+
+    info_text = "\n".join(f"{key}: `{value}`" for key, value in info.items() if value is not None)
+
+    await app.edit_message_text(message.chat.id, message.id, info_text)
+
 # ===================================AutoCar===================================
+
 
 # media_group
 processed_media_groups_ids = []
@@ -98,23 +123,24 @@ lock = asyncio.Lock()
 
 @app.on_message((filters.media_group) & filters.chat(allowSendGrp))
 async def handle(client: Client, message: Message):
-    try:
-        async with lock:
-            if message.media_group_id in processed_media_groups_ids:
-                return
-            processed_media_groups_ids.append(message.media_group_id)
+    if (message.caption and not any(word in message.caption for word in captions_blacklist)) or (not message.caption):
+        try:
+            async with lock:
+                if message.media_group_id in processed_media_groups_ids:
+                    return
+                processed_media_groups_ids.append(message.media_group_id)
 
-        print(color.CYAN + "[Received] Time:", message.date, ",Group:",
-              message.chat.title, ",Type: media_group" + color.END)
-        for group in checkSameGrp:
-            result = await app.copy_media_group(chat_id=group, from_chat_id=message.chat.id, message_id=message.id)
-            for times in result:
-                await delMsg(client, times)
+            print(color.CYAN + "[Received] Time:", message.date, ",Group:",
+                  message.chat.title, ",Type: media_group" + color.END)
+            for group in checkSameGrp:
+                result = await app.copy_media_group(chat_id=group, from_chat_id=message.chat.id, message_id=message.id)
+                for times in result:
+                    await delMsg(client, times)
 
-        processed_media_groups_ids.clear()
-    except Exception as e:
-        logger.error(type(e.__class__, e))
-        return
+            processed_media_groups_ids.clear()
+        except Exception as e:
+            logger.error(type(e.__class__, e))
+            return
 
 
 # 轉傳單一檔案
@@ -122,27 +148,28 @@ async def handle(client: Client, message: Message):
 
 @app.on_message(((filters.photo | filters.document | filters.video) & ~filters.media_group) & filters.chat(allowSendGrp), group=1)
 async def quicksend(client, message):
-    try:
-        file_type = message.media.value
-        if (file_type == "photo"):
-            print(color.CYAN + "[Received] Time:", message.date, ",Group:",
-                  message.chat.title, ",Type:", file_type, ",Size:", convert_size(message.photo.file_size) + color.END)
-        if (file_type == "document"):
-            print(color.CYAN + "[Received] Time:", message.date, ",Group:", message.chat.title, ",Type:", message.document.mime_type,
-                  ",File Name:", message.document.file_name, ",Size:", convert_size(message.document.file_size) + color.END)
-        if (file_type == "video"):
-            print(color.CYAN + "[Received] Time:", message.date, ",Group:", message.chat.title, ",Type:", message.video.mime_type,
-                  ",File Name:", message.video.file_name, ",Size:", convert_size(message.video.file_size) + color.END)
-        for group in checkSameGrp:
-            result = await message.copy(group)
-            await delMsg(client, result)
-    except FloodWait as e:
-        print(color.RED + "Wait {} seconds before continuing".format(e.value)+color.END)
-        logger.error(type(e.__class__, e))
-        await asyncio.sleep(e.value)  # Wait "value" seconds before continuing
-    except Exception as e:
-        logger.error(type(e.__class__, e))
-        return
+    if (message.caption and not any(word in message.caption for word in captions_blacklist)) or (not message.caption):
+        try:
+            file_type = message.media.value
+            if (file_type == "photo"):
+                print(color.CYAN + "[Received] Time:", message.date, ",Group:",
+                      message.chat.title, ",Type:", file_type, ",Size:", convert_size(message.photo.file_size) + color.END)
+            if (file_type == "document"):
+                print(color.CYAN + "[Received] Time:", message.date, ",Group:", message.chat.title, ",Type:", message.document.mime_type,
+                      ",File Name:", message.document.file_name, ",Size:", convert_size(message.document.file_size) + color.END)
+            if (file_type == "video"):
+                print(color.CYAN + "[Received] Time:", message.date, ",Group:", message.chat.title, ",Type:", message.video.mime_type,
+                      ",File Name:", message.video.file_name, ",Size:", convert_size(message.video.file_size) + color.END)
+            for group in checkSameGrp:
+                result = await message.copy(group)
+                await delMsg(client, result)
+        except FloodWait as e:
+            print(color.RED + "Wait {} seconds before continuing".format(e.value)+color.END)
+            logger.error(type(e.__class__, e))
+            await asyncio.sleep(e.value)  # Wait "value" seconds before continuing
+        except Exception as e:
+            logger.error(type(e.__class__, e))
+            return
 
 
 # ===================================DelSameFile===================================
@@ -294,13 +321,3 @@ async def init():
 
 print("Initialize checking for duplicate files...")
 app.run(init())
-
-
-# app.run()
-
-# print("Enter Yes to start the APP:")
-# if (input().lower() == "yes"):
-#     print("Initialize checking for duplicate files...")
-#     app.run(init())
-# else:
-#     print("Exit")
