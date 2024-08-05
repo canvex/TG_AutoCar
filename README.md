@@ -20,7 +20,10 @@ Also, adjust allowSendGrp and checkSameGrp in the code to match your desired gro
 
 ## Commands
 
-| Command | Description                                                                                |
-| ------- | ------------------------------------------------------------------------------------------ |
-| /i      | Fetch information about the group. You can also use this command by replying to a message. |
-| /save   | Save the file ID in id.txt.                                                                |
+| Command    | Description                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------ |
+| /cmd       | Display bot commands                                                                             |
+| /i         | Fetch brief information about the group. You can also use this command by replying to a message. |
+| /fi        | Fetch full information about the group. You can also use this command by replying to a message.  |
+| /reload    | Reload the messages for the group                                                                |
+| /reloadall | Reload the messages for all groups                                                               |
