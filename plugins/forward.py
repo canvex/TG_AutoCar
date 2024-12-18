@@ -1,9 +1,10 @@
 import asyncio
+import time
 from pyrogram import Client, filters
 import databaseOP as db_ops
 from pyrogram.errors import FloodWait
-from .delete import delMsg
-from config import logger, captions_blacklist, filenames_blacklist, allowSendGrp, checkSameGrp, color
+from plugins.delete import delMsg
+from config import logger, captions_blacklist, filenames_blacklist, allowSendGrp, checkSameGrp, downloadGrp, color
 
 
 def find_blacklisted_word(text, blacklist):
@@ -24,7 +25,8 @@ lock = asyncio.Lock()
 async def handle(client, message):
    # 檢查標題
     if message.caption:
-        detected_word = find_blacklisted_word(message.caption, captions_blacklist)
+        detected_word = find_blacklisted_word(
+            message.caption, captions_blacklist)
         if detected_word:
             detected_word = color.RED + detected_word + color.END
             print(f"標題包含黑名單中的單字 '{detected_word}' 已忽略該訊息。")
@@ -32,10 +34,12 @@ async def handle(client, message):
 
     # 檢查檔案名稱
     if message.document:
-        detected_word = find_blacklisted_word(message.document.file_name, filenames_blacklist)
+        detected_word = find_blacklisted_word(
+            message.document.file_name, filenames_blacklist)
         if detected_word:
             detected_word = color.RED + detected_word + color.END
-            print(f"檔案名稱 {message.document.file_name} 偵測黑名單中 '{detected_word}' 已忽略該訊息。")
+            print(
+                f"檔案名稱 {message.document.file_name} 偵測黑名單中 '{detected_word}' 已忽略該訊息。")
             return
     try:
         async with lock:
@@ -62,7 +66,8 @@ async def handle(client, message):
 async def quicksend(client, message):
     # 檢查標題
     if message.caption:
-        detected_word = find_blacklisted_word(message.caption, captions_blacklist)
+        detected_word = find_blacklisted_word(
+            message.caption, captions_blacklist)
         if detected_word:
             detected_word = color.RED + detected_word + color.END
             print(f"標題包含黑名單中的單字 '{detected_word}' 已忽略該訊息。")
@@ -70,10 +75,12 @@ async def quicksend(client, message):
 
     # 檢查檔案名稱
     if message.document:
-        detected_word = find_blacklisted_word(message.document.file_name, filenames_blacklist)
+        detected_word = find_blacklisted_word(
+            message.document.file_name, filenames_blacklist)
         if detected_word:
             detected_word = color.RED + detected_word + color.END
-            print(f"檔案名稱 {message.document.file_name} 偵測黑名單中 '{detected_word}' 已忽略該訊息。")
+            print(
+                f"檔案名稱 {message.document.file_name} 偵測黑名單中 '{detected_word}' 已忽略該訊息。")
             return
     try:
         file_type = message.media.value
@@ -96,3 +103,21 @@ async def quicksend(client, message):
     except Exception as e:
         logger.error(type(e.__class__, e))
         return
+
+
+@Client.on_message((filters.media) & filters.chat(downloadGrp))
+async def download(client, message):
+    for dlgrp in downloadGrp:
+        if message.sender_chat.id == dlgrp:
+            start = time.time()
+            # Keep track of the progress while downloading
+
+            async def progress(current, total):
+                print(f"{current * 100 / total:.2f}%")
+            # await client.download_media(message, progress=progress)
+            if message.document is not None:
+                await client.send_message("me", f"爆大剛剛分享了 `{message.document.file_name}` ")
+            await client.download_media(message)
+            end = time.time()
+            usetime = end - start
+            print(f"下載共耗時{usetime:.2f}秒")
