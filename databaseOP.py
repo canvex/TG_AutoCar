@@ -57,12 +57,12 @@ def insert_message(file):
 
         # 提交事務
         conn.commit()
-        print("資料插入成功！")
+        # print("資料插入成功！")
     except sqlite3.IntegrityError:
         print("錯誤：fid 重複，無法插入資料。")
         return True
     except Exception as e:
-        print(f"發生錯誤：{e}")
+        print(f"插入資料發生錯誤：{e}")
         return False
     return False
 
@@ -82,9 +82,9 @@ def update_message(file):
 
         # 提交事務
         conn.commit()
-        print("資料更新成功！")
+        # print("資料更新成功！")
     except Exception as e:
-        print(f"發生錯誤：{e}")
+        print(f"更新資料發生錯誤：{e}")
 
 
 def delete_group_data(group_name):
@@ -98,7 +98,7 @@ def delete_group_data(group_name):
             conn.commit()
             print(f"群組:{group_name} 的所有資料已刪除。")
     except Exception as e:
-        print(f"發生錯誤：{e}")
+        print(f"刪除群組資料發生錯誤：{e}")
 
 
 def delete_file(file):
