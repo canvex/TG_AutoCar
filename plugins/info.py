@@ -1,4 +1,5 @@
 from pyrogram import Client, filters
+import config
 
 
 @Client.on_message(filters.command("cmd") & filters.me)
@@ -42,6 +43,22 @@ async def simpleInfo(client, message):
         "Message Time": msg.date
     }
 
-    info_text = "\n".join(f"{key}: `{value}`" for key, value in info.items() if value is not None)
+    info_text = "\n".join(f"{key}: `{value}`" for key,
+                          value in info.items() if value is not None)
 
     await client.edit_message_text(message.chat.id, message.id, info_text)
+
+
+@Client.on_message(filters.command("showcfg") & filters.me)
+async def show_config(client, message):
+    cfg_text = (
+        f"⚙️ Current Config Values:\n\n"
+        f"`allowSendGrp` = `{config.allowSendGrp}`\n"
+        f"`checkSameGrp` = `{config.checkSameGrp}`\n"
+        f"`downloadGrp` = `{config.downloadGrp}`\n"
+        f"`captions_blacklist` = `{config.captions_blacklist}`\n"
+        f"`filenames_blacklist` = `{config.filenames_blacklist}`\n"
+    )
+    # print(cfg_text)
+    await client.edit_message_text(message.chat.id, message.id, cfg_text)
+

@@ -1,37 +1,47 @@
-# config.py
 import logging
 import configparser
 
-# 設置日誌
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s',
                     level=logging.INFO, filename='logfile.log')
 logger = logging.getLogger(__name__)
 
-# 讀取 INI 檔案，指定編碼為 'utf-8'
 config = configparser.ConfigParser()
 config.read('config.ini', encoding='utf-8')
 
-# 讀取配置項
-
 
 def get_list(section, key):
-    return [item.strip() for item in config.get(section, key).split(',')]
+    return [item.strip() for item in config.get(section, key).split(',') if item.strip()]
 
 
-captions_blacklist = get_list('blacklist', 'captions')
-filenames_blacklist = get_list('blacklist', 'files')
-allowSendGrp = [int(item.strip()) for item in get_list('groups', 'allowSendGrp')]
-checkSameGrp = [int(item.strip()) for item in get_list('groups', 'checkSameGrp')]
-downloadGrp = [int(item.strip()) for item in get_list('groups', 'downloadGrp')]
+def load_config():
+    """讀取設定檔並回傳字典形式"""
+    global captions_blacklist, filenames_blacklist
+    global allowSendGrp, checkSameGrp, downloadGrp
+    global api_id, api_hash
 
-# 獲取 API 配置
-api_id = config.get('api', 'api_id', fallback='')
-api_hash = config.get('api', 'api_hash', fallback='')
-# 如果 api 部分的值為空，則使用 public_apis 部分的值
-if not api_id or not api_hash:
-    api_id = config.get('public_apis', 'default_api_id')
-    api_hash = config.get('public_apis', 'default_api_hash')
+    captions_blacklist = get_list('blacklist', 'captions')
+    filenames_blacklist = get_list('blacklist', 'files')
+    allowSendGrp = [int(x) for x in get_list('groups', 'allowSendGrp')]
+    checkSameGrp = [int(x) for x in get_list('groups', 'checkSameGrp')]
+    downloadGrp = [int(x) for x in get_list('groups', 'downloadGrp')]
 
+    api_id = config.get('api', 'api_id', fallback='')
+    api_hash = config.get('api', 'api_hash', fallback='')
+    if not api_id or not api_hash:
+        api_id = config.get('public_apis', 'default_api_id')
+        api_hash = config.get('public_apis', 'default_api_hash')
+
+    logger.info("✅ Config reloaded successfully.")
+
+
+def reload_config():
+    """重新讀取設定檔"""
+    config.read('config.ini', encoding='utf-8')
+    load_config()
+
+
+# 初始讀取
+load_config()
 
 class color:
     PURPLE = '\033[95m'

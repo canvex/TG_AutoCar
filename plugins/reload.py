@@ -6,12 +6,13 @@ import asyncio
 import messageInfo
 import shutil
 from .delete import delDirect
-from config import logger, checkSameGrp
+import config
+
 
 
 @Client.on_message(filters.command("reload") & filters.me)
 async def reload(client, message):
-    if (message.chat.id in checkSameGrp):
+    if (message.chat.id in config.checkSameGrp):
         start_time = time.time()  # 記錄開始時間
         await client.edit_message_text(message.chat.id, message.id, f"重新紀錄 {message.chat.title} 檔案...")
         db_ops.delete_group_data(message.chat.title)
@@ -25,10 +26,10 @@ async def reload(client, message):
                 print(f'群組:{msg.chat.title} 開始紀錄檔案, 檢查數量:{total}')
         except FloodWait as e:
             print(f"等待 {e.value} 秒後繼續")
-            logger.error(f"FloodWait: {e}")
+            config.logger.error(f"FloodWait: {e}")
             await asyncio.sleep(e.value)  # 等待 "value" 秒後繼續
         except Exception as e:
-            logger.error(f"{type(e).__name__}: {e}")
+            config.logger.error(f"{type(e).__name__}: {e}")
         end_time = time.time()  # 記錄結束時間
         elapsed_time = end_time - start_time  # 計算耗費時間
         await client.edit_message_text(message.chat.id, message.id, f"群組 {message.chat.title} 重整完成✅\n耗費時間: {elapsed_time:.2f} 秒")
@@ -46,7 +47,7 @@ async def reloadall(client, message):
     num = 0
     start_time = time.time()  # 記錄開始時間
     try:
-        for group in checkSameGrp:
+        for group in config.checkSameGrp:
             num += 1
             total = 0  # 統計處理訊息數量
             await client.edit_message_text(message.chat.id, message.id, f"重新紀錄第{num}個群組{group}資料")
@@ -58,11 +59,17 @@ async def reloadall(client, message):
                 print(f'群組:{group} 開始紀錄檔案, 檢查數量:{total}')
     except FloodWait as e:
         print(f"等待 {e.value} 秒後繼續")
-        logger.error(f"FloodWait: {e}")
+        config.logger.error(f"FloodWait: {e}")
         await asyncio.sleep(e.value)  # 等待 "value" 秒後繼續
     except Exception as e:
-        logger.error(f"{type(e).__name__}: {e}")
+        config.logger.error(f"{type(e).__name__}: {e}")
     end_time = time.time()  # 記錄結束時間
     elapsed_time = end_time - start_time  # 計算耗費時間
     await client.edit_message_text(message.chat.id, message.id, f"全部群組重整完成✅\n耗費時間: {elapsed_time:.2f} 秒")
     print(f"全部群組重整完成✅\n耗費時間: {elapsed_time:.2f} 秒")
+
+@Client.on_message(filters.command("reloadcfg") & filters.me)
+async def reload_handler(client, message):
+    config.reload_config()
+    await message.reply("✅ 設定已重新讀取！")
+

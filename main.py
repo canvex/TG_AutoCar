@@ -1,7 +1,7 @@
 import asyncio
 import platform
 from pyrogram import Client, idle, enums
-from config import api_id, api_hash
+import config
 import databaseOP as db_ops
 
 # 系統資訊
@@ -16,8 +16,8 @@ db_ops.create_tables()
 async def hellome():
     async with Client(
         "my_account",
-        api_id=api_id,
-        api_hash=api_hash,
+        api_id=config.api_id,
+        api_hash=config.api_hash,
         device_model="AutoCarBot",          # 自訂你的設備名稱
         system_version=sysos,               # 系統版本
         app_version=app_version,            # 程式版本
