@@ -22,6 +22,7 @@ captions_blacklist = get_list('blacklist', 'captions')
 filenames_blacklist = get_list('blacklist', 'files')
 allowSendGrp = [int(item.strip()) for item in get_list('groups', 'allowSendGrp')]
 checkSameGrp = [int(item.strip()) for item in get_list('groups', 'checkSameGrp')]
+downloadGrp = [int(item.strip()) for item in get_list('groups', 'downloadGrp')]
 
 # 獲取 API 配置
 api_id = config.get('api', 'api_id', fallback='')

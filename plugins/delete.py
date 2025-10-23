@@ -5,7 +5,8 @@ import databaseOP as db_ops
 from config import logger, checkSameGrp, color
 
 
-@Client.on_message((filters.media) & filters.chat(checkSameGrp), group=2)  # 新訊息來檢查
+# 新訊息來檢查
+@Client.on_message((filters.media) & filters.chat(checkSameGrp), group=2)
 async def delMsg(client, message):
     try:
         msg = await client.get_messages(message.chat.id, message.id)

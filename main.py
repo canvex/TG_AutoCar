@@ -1,29 +1,35 @@
-from pyrogram import Client, idle
+import asyncio
 import platform
+from pyrogram import Client, idle, enums
 from config import api_id, api_hash
 import databaseOP as db_ops
 
-sysos = platform.system()
-app_version = "1.7"  # 程式版本
+# 系統資訊
+sysos = platform.system() + " " + platform.release()
+app_version = "1.8"
 plugins = dict(root="plugins")
-# 呼叫 db_ops 來創建資料表
+
+# 資料庫初始化
 db_ops.create_tables()
 
 
-# 注意 plugins 參數使用的是相對路徑，並通過 get_path 函數設置
-app = Client(
-    "my_account",
-    api_id=api_id,
-    api_hash=api_hash,
-    app_version=f"{sysos} {app_version}",
-    device_model="AutoCar",
-    plugins=plugins)
-
-
 async def hellome():
-    async with app:
-        # Send a message, Markdown is enabled by default
+    async with Client(
+        "my_account",
+        api_id=api_id,
+        api_hash=api_hash,
+        device_model="AutoCarBot",          # 自訂你的設備名稱
+        system_version=sysos,               # 系統版本
+        app_version=app_version,            # 程式版本
+        lang_pack="desktop",                # 語言包
+        lang_code="en",                     # 語言代碼
+        client_platform=enums.ClientPlatform.DESKTOP,
+        plugins=plugins
+    ) as app:
         me = await app.get_me()
         print(f"歡迎 {me.first_name}({me.username}) 使用🥳🥳🥳\n")
         await idle()
-app.run(hellome())
+
+if __name__ == "__main__":
+
+    asyncio.run(hellome())
