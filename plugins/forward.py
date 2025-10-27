@@ -4,8 +4,10 @@ from pyrogram import Client, filters
 import databaseOP as db_ops
 from pyrogram.errors import FloodWait
 from plugins.delete import delMsg
+from collections import deque
 
 import config
+
 
 def find_blacklisted_word(text, blacklist):
     for word in blacklist:
@@ -15,48 +17,69 @@ def find_blacklisted_word(text, blacklist):
 
 
 # media_group
-processed_media_groups_ids = []
 lock = asyncio.Lock()
+
+# 最大保留 50 組黑名單 group_id
+MAX_GROUPS = 50
+
+# 使用 deque 限制長度
+blacklisted_media_groups_ids = deque(maxlen=MAX_GROUPS)
+processed_media_groups_ids = set()
 
 # 轉傳media_group類型
 
 
 @Client.on_message((filters.media_group) & filters.chat(config.allowSendGrp))
 async def handle(client, message):
-   # 檢查標題
+    if not message.media_group_id:
+        return
+
+    group_id = str(message.media_group_id)
+
+    # 如果整組已被黑名單擋掉
+    if group_id in blacklisted_media_groups_ids:
+        return
+
+    # 檢查 caption 黑名單
     if message.caption:
         detected_word = find_blacklisted_word(
             message.caption, config.captions_blacklist)
         if detected_word:
             detected_word = config.color.RED + detected_word + config.color.END
-            print(f"標題包含黑名單中的單字 '{detected_word}' 已忽略該訊息。")
+            print(f"標題包含黑名單中的單字 '{detected_word}' 已忽略該媒體群組。")
+            blacklisted_media_groups_ids.append(group_id)  # 超過 50 會自動刪最舊
             return
 
-    # 檢查檔案名稱
+    # 檢查檔案名稱黑名單
     if message.document:
         detected_word = find_blacklisted_word(
             message.document.file_name, config.filenames_blacklist)
         if detected_word:
             detected_word = config.color.RED + detected_word + config.color.END
             print(
-                f"檔案名稱 {message.document.file_name} 偵測黑名單中 '{detected_word}' 已忽略該訊息。")
+                f"檔案名稱 {message.document.file_name} 偵測黑名單單字「{detected_word}」，已忽略該媒體群組。")
+            blacklisted_media_groups_ids.append(group_id)  # 超過 50 會自動刪最舊
             return
+
     try:
         async with lock:
-            if message.media_group_id in processed_media_groups_ids:
+            if group_id in processed_media_groups_ids:
                 return
-            processed_media_groups_ids.append(message.media_group_id)
+            processed_media_groups_ids.add(group_id)
 
-        print(config.color.CYAN + "[Received] Time:", message.date, ",Group:",
-              message.chat.title, ",Type: media_group" + config.color.END)
+        print(config.color.CYAN +
+              f"[Received] Time: {message.date}, Group: {message.chat.title}, Type: media_group" + config.color.END)
+
+        # 轉傳相簿
         for group in config.checkSameGrp:
             result = await client.copy_media_group(chat_id=group, from_chat_id=message.chat.id, message_id=message.id)
             for times in result:
                 await delMsg(client, times)
-        processed_media_groups_ids.clear()
+
+        processed_media_groups_ids.remove(group_id)
+
     except Exception as e:
-        config.logger.error(type(e.__class__, e))
-        return
+        config.logger.error(f"{type(e).__name__}: {e}")
 
 
 # 轉傳單一檔案
@@ -121,14 +144,3 @@ async def download(client, message):
             end = time.time()
             usetime = end - start
             print(f"下載共耗時{usetime:.2f}秒")
-
-
-# @Client.on_message(filters.command("reloadcfg") & filters.me)
-# async def reload_handler(client, message):
-#     reload_config()
-#     await message.reply("✅ 設定已重新讀取！")
-
-
-@Client.on_message(filters.command("showcfg2") & filters.me)
-async def fullInfo(client, message):
-    await client.edit_message_text(message.chat.id, message.id, str(config.captions_blacklist))
