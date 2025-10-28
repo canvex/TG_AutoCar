@@ -6,8 +6,10 @@ import config
 
 
 # 新訊息來檢查
-@Client.on_message((filters.media) & filters.chat(config.checkSameGrp), group=2)
+@Client.on_message((filters.media), group=2)
 async def delMsg(client, message):
+    if message.chat.id not in config.checkSameGrp:
+        return
     try:
         msg = await client.get_messages(message.chat.id, message.id)
     except Exception as e:

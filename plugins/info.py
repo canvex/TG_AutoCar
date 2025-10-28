@@ -17,6 +17,7 @@ async def pin(client, message):
 
 @Client.on_message(filters.command("fi") & filters.me)
 async def fullInfo(client, message):
+    # print(message)
     if message.reply_to_message_id:
         await client.edit_message_text(message.chat.id, message.id, str(message.reply_to_message)[:4096])
     else:
@@ -58,7 +59,22 @@ async def show_config(client, message):
         f"`downloadGrp` = `{config.downloadGrp}`\n"
         f"`captions_blacklist` = `{config.captions_blacklist}`\n"
         f"`filenames_blacklist` = `{config.filenames_blacklist}`\n"
+        f"`active_profiles` = `{config.active_profiles}`\n"
     )
     # print(cfg_text)
     await client.edit_message_text(message.chat.id, message.id, cfg_text)
 
+
+@Client.on_message(filters.command("reloadcfg") & filters.me)
+async def reload_config_handler(client, message):
+    # 重新讀設定
+    config.reload_config()
+
+    # print("✅ 設定已重新讀取")
+
+    # 編輯訊息回覆
+    await client.edit_message_text(
+        chat_id=message.chat.id,
+        message_id=message.id,
+        text="✅ 重新讀取設定完成"
+    )
